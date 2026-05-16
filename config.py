@@ -19,16 +19,23 @@ class Config:
     WTF_CSRF_TIME_LIMIT = 3600  # 1 hour
 
     # ─── Database ─────────────────────────────────────────────
-    DB_HOST     = os.environ.get('DB_HOST', 'localhost')
-    DB_PORT     = os.environ.get('DB_PORT', '3306')
-    DB_NAME     = os.environ.get('DB_NAME', 'chem_design_db')
-    DB_USER     = os.environ.get('DB_USER', 'root')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', 'Sahil123')
-
-    # ─── SQLALCHEMY ──────────────────────────────────────────
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
+    # Check for a single DATABASE_URL (common in Heroku/Render/Railway/Supabase)
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    if SQLALCHEMY_DATABASE_URI:
+        # Fix for Render/Heroku: postgres:// must be postgresql://
+        if SQLALCHEMY_DATABASE_URI.startswith('postgres://'):
+            SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace('postgres://', 'postgresql://', 1)
+        # Fix for Railway/Generic: mysql:// must be mysql+pymysql://
+        if SQLALCHEMY_DATABASE_URI.startswith('mysql://'):
+            SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace('mysql://', 'mysql+pymysql://', 1)
+    else:
+        # Fallback to individual components
+        DB_HOST     = os.environ.get('DB_HOST', 'localhost')
+        DB_PORT     = os.environ.get('DB_PORT', '3306')
+        DB_NAME     = os.environ.get('DB_NAME', 'chem_design_db')
+        DB_USER     = os.environ.get('DB_USER', 'root')
+        DB_PASSWORD = os.environ.get('DB_PASSWORD', 'Sahil123')
+        SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # Set True to log all SQL queries (debug)
 
