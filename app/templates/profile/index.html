@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="container-fluid py-4 px-4">
+  <div class="row g-4">
+
+    <!-- Left: Profile Card -->
+    <div class="col-lg-4">
+      <div class="glass-card p-4 text-center">
+        <div class="profile-avatar mb-3">
+          {{ (current_user.full_name or current_user.username)[0].upper() }}
+        </div>
+        <h4 class="fw-bold mb-1">{{ current_user.full_name or current_user.username }}</h4>
+        <p class="text-muted small mb-2">{{ current_user.email }}</p>
+        <span class="badge bg-primary rounded-pill px-3">{{ current_user.role.title() }}</span>
+
+        <hr class="border-secondary my-3"/>
+
+        <div class="row g-2 text-center">
+          <div class="col-6">
+            <div class="h4 fw-bold text-primary mb-0">{{ total_designs }}</div>
+            <small class="text-muted">Designs</small>
+          </div>
+          <div class="col-6">
+            <div class="h4 fw-bold text-success mb-0">{{ total_chats }}</div>
+            <small class="text-muted">AI Queries</small>
+          </div>
+        </div>
+
+        <hr class="border-secondary my-3"/>
+
+        <div class="text-start">
+          <div class="mb-2">
+            <i class="bi bi-building text-muted me-2"></i>
+            <span class="small">{{ current_user.institution or '—' }}</span>
+          </div>
+          <div class="mb-2">
+            <i class="bi bi-diagram-3 text-muted me-2"></i>
+            <span class="small">{{ current_user.department or '—' }}</span>
+          </div>
+          <div class="mb-2">
+            <i class="bi bi-calendar3 text-muted me-2"></i>
+            <span class="small">Joined {{ current_user.created_at|datetime_format('%B %Y') }}</span>
+          </div>
+          <div class="mb-2">
+            <i class="bi bi-clock text-muted me-2"></i>
+            <span class="small">Last login: {{ current_user.last_login|datetime_format if current_user.last_login else 'Now' }}</span>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2 mt-3">
+          <a href="{{ url_for('profile.edit') }}" class="btn btn-primary">
+            <i class="bi bi-pencil me-2"></i>Edit Profile
+          </a>
+          <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-key me-2"></i>Change Password
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Activity -->
+    <div class="col-lg-8">
+      <div class="glass-card p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart me-2 text-primary"></i>Design Summary</h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="glass-card p-3 text-center border-primary">
+              <div class="h4 fw-bold text-primary">{{ total_designs }}</div>
+              <small class="text-muted">Total Designs</small>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="glass-card p-3 text-center border-success">
+              <div class="h4 fw-bold text-success">{{ total_chats }}</div>
+              <small class="text-muted">AI Conversations</small>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="glass-card p-3 text-center border-warning">
+              <div class="h4 fw-bold text-warning">{{ current_user.unit_system }}</div>
+              <small class="text-muted">Unit System</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preferences Panel -->
+      <div class="glass-card p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-sliders me-2 text-info"></i>Preferences</h5>
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <label class="form-label small fw-medium">Theme</label>
+            <div class="d-flex gap-2">
+              <span class="badge {% if current_user.theme_preference == 'dark' %}bg-primary{% else %}bg-secondary{% endif %} fs-6 px-3 py-2">
+                <i class="bi bi-moon-stars me-1"></i>{{ current_user.theme_preference|title }}
+              </span>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label small fw-medium">Unit System</label>
+            <div>
+              <span class="badge bg-success fs-6 px-3 py-2">{{ current_user.unit_system }}</span>
+            </div>
+          </div>
+          {% if current_user.bio %}
+          <div class="col-12">
+            <label class="form-label small fw-medium">Bio</label>
+            <p class="text-muted small mb-0">{{ current_user.bio }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

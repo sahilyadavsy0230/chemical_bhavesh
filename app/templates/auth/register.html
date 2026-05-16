@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-bg">
+    <div class="auth-particle" style="--x:15%;--y:25%;--d:7s;--s:55px"></div>
+    <div class="auth-particle" style="--x:75%;--y:55%;--d:11s;--s:45px"></div>
+    <div class="auth-particle" style="--x:45%;--y:75%;--d:8s;--s:75px"></div>
+    <div class="auth-particle" style="--x:25%;--y:45%;--d:13s;--s:35px"></div>
+  </div>
+
+  <div class="auth-container" style="max-width:520px">
+    <div class="auth-logo text-center mb-4">
+      <div class="auth-logo-icon mx-auto mb-3"><i class="bi bi-atom"></i></div>
+      <h1 class="h3 fw-bold text-gradient">ChemDesignAI</h1>
+      <p class="text-muted small">Create your engineering account</p>
+    </div>
+
+    <div class="auth-card glass-card">
+      <div class="auth-card-header text-center mb-4">
+        <h2 class="h5 fw-bold mb-1">Create Account</h2>
+        <p class="text-muted small">Join thousands of chemical engineers</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.register') }}" id="regForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-medium"><i class="bi bi-person-badge me-1 text-primary"></i>Full Name</label>
+            <input type="text" class="form-control input-glass" name="full_name"
+                   value="{{ form_data.get('full_name','') }}" placeholder="Dr. Bhavesh Patel"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-medium"><i class="bi bi-person me-1 text-primary"></i>Username *</label>
+            <input type="text" class="form-control input-glass" name="username"
+                   value="{{ form_data.get('username','') }}" placeholder="engineer123" required minlength="3"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-medium"><i class="bi bi-envelope me-1 text-primary"></i>Email *</label>
+            <input type="email" class="form-control input-glass" name="email"
+                   value="{{ form_data.get('email','') }}" placeholder="you@example.com" required/>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-medium"><i class="bi bi-building me-1 text-primary"></i>Institution</label>
+            <input type="text" class="form-control input-glass" name="institution"
+                   value="{{ form_data.get('institution','') }}" placeholder="University / Company"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-medium"><i class="bi bi-lock me-1 text-primary"></i>Password *</label>
+            <input type="password" class="form-control input-glass" id="password" name="password"
+                   placeholder="Min 8 characters" required minlength="8"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-medium"><i class="bi bi-lock-fill me-1 text-primary"></i>Confirm *</label>
+            <input type="password" class="form-control input-glass" id="confirm_password"
+                   name="confirm_password" placeholder="Repeat password" required/>
+          </div>
+        </div>
+
+        <!-- Password Strength -->
+        <div class="mt-2 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <small class="text-muted">Password strength</small>
+            <small id="strengthLabel" class="text-muted">—</small>
+          </div>
+          <div class="progress" style="height:4px">
+            <div class="progress-bar" id="strengthBar" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- Terms -->
+        <div class="form-check mb-4">
+          <input class="form-check-input" type="checkbox" id="terms" required/>
+          <label class="form-check-label text-muted small" for="terms">
+            I agree to the terms of service and that this platform is for educational use.
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg w-100 btn-glow" id="regBtn">
+          <i class="bi bi-person-plus me-2"></i>Create Account
+        </button>
+      </form>
+
+      <hr class="my-4 border-secondary"/>
+      <p class="text-center text-muted small mb-0">
+        Already have an account?
+        <a href="{{ url_for('auth.login') }}" class="text-primary fw-medium">Sign in →</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Password strength meter
+document.getElementById('password').addEventListener('input', function() {
+  const v = this.value, bar = document.getElementById('strengthBar'), lbl = document.getElementById('strengthLabel');
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (/[A-Z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  const levels = [
+    {pct:'25%', cls:'bg-danger', txt:'Weak'},
+    {pct:'50%', cls:'bg-warning', txt:'Fair'},
+    {pct:'75%', cls:'bg-info',   txt:'Good'},
+    {pct:'100%',cls:'bg-success',txt:'Strong'},
+  ];
+  const lvl = levels[Math.max(0, score-1)] || levels[0];
+  bar.style.width = lvl.pct;
+  bar.className = 'progress-bar ' + lvl.cls;
+  lbl.textContent = v.length > 0 ? lvl.txt : '—';
+});
+document.getElementById('regForm').addEventListener('submit', function() {
+  const btn = document.getElementById('regBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating account...';
+  btn.disabled = true;
+});
+</script>
+{% endblock %}

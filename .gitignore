@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.env
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Flask
+instance/
+.webassets-cache
+*.sqlite3
+*.db
+
+# Reports (generated PDFs)
+app/static/reports/*.pdf
+app/reports/generated/
+
+# Database migrations (keep structure, ignore cache)
+migrations/__pycache__/
+migrations/versions/__pycache__/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Environment & Secrets
+.env
+.env.production
+.env.local
+*.env
+
+# Node (if any frontend tooling)
+node_modules/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+.env
+venv/
+__pycache__/

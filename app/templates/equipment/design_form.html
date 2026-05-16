@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+{% block title %}{{ meta.name }} Design{% endblock %}
+
+{% block extra_css %}
+<style>
+#viz-canvas { width:100%; height:380px; border-radius:12px; background:linear-gradient(135deg,#0d1117,#1a1a2e); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+  <!-- ── Breadcrumb ──────────────────────────────────────────── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-primary">Dashboard</a></li>
+      <li class="breadcrumb-item active">{{ meta.name }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+
+    <!-- ── LEFT: Input Form ──────────────────────────────────── -->
+    <div class="col-xl-5">
+      <div class="glass-card p-4">
+        <!-- Header -->
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div class="eq-header-icon"><i class="bi {{ meta.icon }}"></i></div>
+          <div>
+            <h2 class="h5 fw-bold mb-0">{{ meta.name }} Design</h2>
+            <p class="text-muted small mb-0">{{ meta.description }}</p>
+          </div>
+        </div>
+
+        <!-- Quick-switch equipment tabs -->
+        <div class="eq-tab-bar mb-4">
+          {% for k, m in all_meta.items() %}
+          <a href="{{ url_for('equipment.design_form', eq_type=k) }}"
+             class="eq-tab-item {% if k == eq_type %}active{% endif %}"
+             title="{{ m.name }}">
+            <i class="bi {{ m.icon }}"></i>
+          </a>
+          {% endfor %}
+        </div>
+
+        <!-- Design Name -->
+        <form method="POST" action="{{ url_for('equipment.design_form', eq_type=eq_type) }}"
+              id="designForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+          <div class="mb-3">
+            <label class="form-label fw-medium small">
+              <i class="bi bi-tag me-1 text-primary"></i>Design Name
+            </label>
+            <input type="text" class="form-control input-glass" name="design_name"
+                   placeholder="e.g., HX-101 Crude Preheat"/>
+          </div>
+
+          <!-- Project selector -->
+          {% if projects %}
+          <div class="mb-4">
+            <label class="form-label fw-medium small">
+              <i class="bi bi-folder me-1 text-success"></i>Save to Project (optional)
+            </label>
+            <select class="form-select input-glass" name="project_id">
+              <option value="">-- Select Project --</option>
+              {% for p in projects %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
+          <hr class="border-secondary mb-4"/>
+
+          <!-- Dynamic Fields -->
+          <div class="row g-3">
+            {% for field in meta.fields %}
+            <div class="col-{{ '12' if field.type == 'select' else '6' if loop.index % 2 == 0 else '6' }}
+                        {% if field.name == 'material' or field.name == 'reactor_type' or field.name == 'compressor_type' %}col-12{% endif %}">
+              <label class="form-label fw-medium small text-light">
+                {{ field.label }}
+              </label>
+
+              {% if field.type == 'select' %}
+              <select class="form-select input-glass" name="{{ field.name }}" id="{{ field.name }}">
+                {% for opt in field.options %}
+                <option value="{{ opt }}">{{ opt }}</option>
+                {% endfor %}
+              </select>
+
+              {% else %}
+              <input type="number"
+                     class="form-control input-glass"
+                     name="{{ field.name }}"
+                     id="{{ field.name }}"
+                     value="{{ field.get('default', '') }}"
+                     {% if field.get('min') is not none %}min="{{ field.min }}"{% endif %}
+                     {% if field.get('max') is not none %}max="{{ field.max }}"{% endif %}
+                     step="{{ field.get('step', 'any') }}"
+                     placeholder="{{ field.get('default', '') }}"
+                     required/>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Errors -->
+          {% if errors %}
+          <div class="alert alert-danger mt-3 py-2">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Input Errors:</strong>
+            <ul class="mb-0 mt-1 small">
+              {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+          <!-- Actions -->
+          <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg btn-glow" id="calcBtn">
+              <i class="bi bi-calculator me-2"></i>Calculate Design
+            </button>
+            <button type="reset" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Inputs
+            </button>
+          </div>
+        </form>
+
+        <!-- Formula Reference -->
+        <div class="mt-4 pt-3 border-top border-secondary">
+          <button class="btn btn-sm btn-outline-info w-100" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#formulaRef">
+            <i class="bi bi-journal-code me-2"></i>Show Formula Reference
+          </button>
+          <div class="collapse mt-3" id="formulaRef">
+            <div class="formula-box p-3 rounded">
+              <button class="btn btn-sm btn-primary mb-2" id="explainFormula"
+                      data-eq="{{ eq_type }}">
+                <i class="bi bi-robot me-1"></i>Explain with AI
+              </button>
+              <div id="formulaExplanation" class="small text-muted mt-2" style="white-space:pre-wrap"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unit Converter -->
+        <div class="mt-3">
+          <button class="btn btn-sm btn-outline-warning w-100" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#unitConverter">
+            <i class="bi bi-arrow-left-right me-2"></i>Unit Converter
+          </button>
+          <div class="collapse mt-2" id="unitConverter">
+            <div class="glass-card p-3">
+              <div class="row g-2">
+                <div class="col-5">
+                  <input type="number" class="form-control form-control-sm input-glass"
+                         id="convInput" placeholder="Value"/>
+                </div>
+                <div class="col-4">
+                  <select class="form-select form-select-sm input-glass" id="convType">
+                    <option value="temperature|C_to_K">°C → K</option>
+                    <option value="temperature|C_to_F">°C → °F</option>
+                    <option value="pressure|kPa_to_bar">kPa → bar</option>
+                    <option value="pressure|kPa_to_psi">kPa → psi</option>
+                    <option value="pressure|atm_to_kPa">atm → kPa</option>
+                    <option value="flow|m3h_to_ls">m³/h → L/s</option>
+                    <option value="length|m_to_ft">m → ft</option>
+                    <option value="length|m_to_in">m → in</option>
+                  </select>
+                </div>
+                <div class="col-3">
+                  <button class="btn btn-sm btn-warning w-100" id="convBtn">Convert</button>
+                </div>
+                <div class="col-12">
+                  <div class="text-center text-success fw-bold" id="convResult"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: Results & 3D Viz ──────────────────────────── -->
+    <div class="col-xl-7">
+
+      <!-- 3D Visualization -->
+      <div class="glass-card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold mb-0">
+            <i class="bi bi-badge-3d me-2 text-info"></i>3D Equipment Visualization
+          </h6>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="viz-reset">
+              <i class="bi bi-arrow-counterclockwise"></i> Reset View
+            </button>
+            <span class="badge bg-info">Three.js</span>
+          </div>
+        </div>
+        <canvas id="viz-canvas"></canvas>
+        <small class="text-muted d-block mt-1 text-center">
+          <i class="bi bi-mouse me-1"></i>Click & drag to rotate · Scroll to zoom
+        </small>
+      </div>
+
+      <!-- Results Panel -->
+      {% if results %}
+      <div class="glass-card p-4" id="resultsPanel">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h5 class="fw-bold mb-0">
+            <i class="bi bi-check-circle text-success me-2"></i>Calculation Results
+          </h5>
+          <div class="d-flex gap-2">
+            {% if design_id %}
+            <a href="{{ url_for('reports.generate', design_id=design_id) }}"
+               class="btn btn-danger btn-sm">
+              <i class="bi bi-file-earmark-pdf me-1"></i>PDF Report
+            </a>
+            <button class="btn btn-info btn-sm" id="aiOptimize"
+                    data-id="{{ design_id }}">
+              <i class="bi bi-robot me-1"></i>AI Optimize
+            </button>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Key Metrics Row -->
+        <div class="row g-3 mb-4">
+          {% if results.get('heat_duty_kW') %}
+          <div class="col-6 col-md-3">
+            <div class="result-metric">
+              <div class="result-metric-val text-danger">{{ results.heat_duty_kW }}</div>
+              <div class="result-metric-lbl">kW Heat Duty</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('area_required_m2') %}
+          <div class="col-6 col-md-3">
+            <div class="result-metric">
+              <div class="result-metric-val text-info">{{ results.area_required_m2 }}</div>
+              <div class="result-metric-lbl">m² Area</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('effectiveness_pct') %}
+          <div class="col-6 col-md-3">
+            <div class="result-metric">
+              <div class="result-metric-val text-success">{{ results.effectiveness_pct }}%</div>
+              <div class="result-metric-lbl">Effectiveness</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('volume_m3') %}
+          <div class="col-6 col-md-3">
+            <div class="result-metric">
+              <div class="result-metric-val text-warning">{{ results.volume_m3 }}</div>
+              <div class="result-metric-lbl">m³ Volume</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('TDH_m') %}
+          <div class="col-6 col-md-3">
+            <div class="result-metric">
+              <div class="result-metric-val text-primary">{{ results.TDH_m }}</div>
+              <div class="result-metric-lbl">m TDH</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('purchased_cost_USD') %}
+          <div class="col-6 col-md-3">
+            <div class="result-metric">
+              <div class="result-metric-val text-success">${{ "{:,.0f}".format(results.purchased_cost_USD) }}</div>
+              <div class="result-metric-lbl">Purchased Cost</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Calculation Steps Accordion -->
+        <h6 class="fw-bold mb-3">
+          <i class="bi bi-list-ol me-2 text-warning"></i>Step-by-Step Calculations
+        </h6>
+        <div class="accordion accordion-flush" id="stepsAccordion">
+          {% for step in results.get('calculation_steps', []) %}
+          <div class="accordion-item step-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed step-btn" type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#step{{ step.step }}">
+                <span class="step-badge">{{ step.step }}</span>
+                {{ step.title }}
+              </button>
+            </h2>
+            <div id="step{{ step.step }}" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                {% if step.get('formula') %}
+                <div class="formula-pill mb-2">
+                  <i class="bi bi-function me-1"></i>{{ step.formula }}
+                </div>
+                {% endif %}
+                {% if step.get('calc') %}
+                <p class="small text-muted mb-1">{{ step.calc }}</p>
+                {% endif %}
+                <div class="result-pill">
+                  <i class="bi bi-check-circle me-1 text-success"></i>{{ step.result }}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Safety Notes -->
+        {% if results.get('safety_notes') %}
+        <div class="safety-box mt-4 p-3 rounded">
+          <h6 class="fw-bold text-warning mb-2">
+            <i class="bi bi-shield-exclamation me-2"></i>Safety Recommendations
+          </h6>
+          {% for note in results.safety_notes %}
+          <div class="safety-item"><i class="bi bi-chevron-right text-warning me-1"></i>{{ note }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- AI Optimization Output -->
+        <div id="aiOutput" class="ai-suggestion-box mt-4 d-none">
+          <h6 class="fw-bold mb-2">
+            <i class="bi bi-robot me-2 text-info"></i>AI Optimization Suggestions
+          </h6>
+          <div id="aiContent" class="small" style="white-space:pre-wrap"></div>
+        </div>
+      </div>
+      {% else %}
+      <!-- Placeholder when no results yet -->
+      <div class="glass-card p-5 text-center">
+        <i class="bi bi-calculator display-3 text-muted"></i>
+        <h5 class="mt-3 text-muted">Results will appear here</h5>
+        <p class="text-muted small">Fill in the design inputs and click Calculate.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+<script>
+// ── 3D Visualizer ─────────────────────────────────────────────
+initVisualizer('viz-canvas', '{{ eq_type }}', {
+  {% if results %}
+  diameter: {{ results.get('shell_diameter_m', results.get('column_diameter_m', results.get('diameter_m', results.get('body_diameter_m', 0.5)))) or 0.5 }},
+  length:   {{ results.get('tube_length_m',   results.get('column_height_m',   results.get('length_m',   results.get('total_height_m', 2.0)))) or 2.0 }},
+  {% else %}
+  diameter: 0.5, length: 2.0,
+  {% endif %}
+});
+document.getElementById('viz-reset').addEventListener('click', () => resetCamera());
+
+// ── Calculate button spinner ──────────────────────────────────
+document.getElementById('designForm').addEventListener('submit', function() {
+  const btn = document.getElementById('calcBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Calculating...';
+  btn.disabled = true;
+});
+
+// ── AI Optimize ───────────────────────────────────────────────
+const aiBtn = document.getElementById('aiOptimize');
+if (aiBtn) {
+  aiBtn.addEventListener('click', async function() {
+    const id = this.dataset.id;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
+    this.disabled = true;
+    try {
+      const r = await fetch(`/api/v1/optimize/${id}`, {method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken': getCsrfToken()}});
+      const d = await r.json();
+      document.getElementById('aiOutput').classList.remove('d-none');
+      document.getElementById('aiContent').textContent = d.optimization || 'No suggestions generated.';
+    } catch(e) {
+      alert('AI service error. Check your API key.');
+    }
+    this.innerHTML = '<i class="bi bi-robot me-1"></i>AI Optimize';
+    this.disabled = false;
+  });
+}
+
+// ── Formula AI Explain ────────────────────────────────────────
+const explainBtn = document.getElementById('explainFormula');
+if (explainBtn) {
+  explainBtn.addEventListener('click', async function() {
+    const eq = this.dataset.eq;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+    this.disabled = true;
+    try {
+      const r = await fetch('/api/v1/explain-formula', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken': getCsrfToken()},
+        body: JSON.stringify({formula: eq.replace('_',' ') + ' design equations', context: eq})
+      });
+      const d = await r.json();
+      document.getElementById('formulaExplanation').textContent = d.explanation || '';
+    } catch(e) {}
+    this.innerHTML = '<i class="bi bi-robot me-1"></i>Explain with AI';
+    this.disabled = false;
+  });
+}
+
+// ── Unit Converter ────────────────────────────────────────────
+document.getElementById('convBtn').addEventListener('click', async function() {
+  const val = document.getElementById('convInput').value;
+  const [cat, conv] = document.getElementById('convType').value.split('|');
+  if (!val) return;
+  const r = await fetch('/api/v1/convert', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},
+    body: JSON.stringify({category:cat, conversion:conv, value:parseFloat(val)})
+  });
+  const d = await r.json();
+  document.getElementById('convResult').textContent = d.success ? `= ${d.result}` : d.error;
+});
+
+function getCsrfToken() {
+  return document.querySelector('input[name=csrf_token]')?.value || '';
+}
+</script>
+{% endblock %}

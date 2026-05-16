@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+  <!-- ── Welcome Header ────────────────────────────────────── -->
+  <div class="dashboard-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 fw-bold mb-1">
+        Good {{ 'morning' if now.hour < 12 else ('afternoon' if now.hour < 17 else 'evening') }},
+        <span class="text-gradient">{{ current_user.full_name or current_user.username }}</span> 👋
+      </h1>
+      <p class="text-muted mb-0">
+        <i class="bi bi-building me-1"></i>{{ current_user.institution or 'ChemDesignAI Platform' }}
+        &nbsp;·&nbsp;<i class="bi bi-calendar3 me-1"></i>{{ now|datetime_format('%d %B %Y') }}
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('equipment.design_form', eq_type='heat_exchanger') }}"
+         class="btn btn-primary btn-glow">
+        <i class="bi bi-plus-circle me-2"></i>New Design
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Stats Cards ───────────────────────────────────────── -->
+  <div class="row g-4 mb-4">
+    <div class="col-6 col-xl-3">
+      <div class="stat-card glass-card h-100">
+        <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-gear-wide-connected"></i></div>
+        <div class="stat-body">
+          <div class="stat-number counter" data-target="{{ total_designs }}">{{ total_designs }}</div>
+          <div class="stat-label">Total Designs</div>
+        </div>
+        <div class="stat-trend text-success"><i class="bi bi-arrow-up-short"></i> This session</div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="stat-card glass-card h-100">
+        <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-folder2-open"></i></div>
+        <div class="stat-body">
+          <div class="stat-number counter" data-target="{{ total_projects }}">{{ total_projects }}</div>
+          <div class="stat-label">Projects</div>
+        </div>
+        <div class="stat-trend text-info"><i class="bi bi-folder-plus"></i> Manage</div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="stat-card glass-card h-100">
+        <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-robot"></i></div>
+        <div class="stat-body">
+          <div class="stat-number counter" data-target="{{ total_chats }}">{{ total_chats }}</div>
+          <div class="stat-label">AI Queries</div>
+        </div>
+        <div class="stat-trend text-warning"><i class="bi bi-lightning"></i> Llama 3</div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="stat-card glass-card h-100">
+        <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-currency-dollar"></i></div>
+        <div class="stat-body">
+          <div class="stat-number">${{ "{:,.0f}".format(cost_total) }}</div>
+          <div class="stat-label">Total Cost Est.</div>
+        </div>
+        <div class="stat-trend text-danger"><i class="bi bi-graph-up"></i> USD</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Equipment Modules ─────────────────────────────────── -->
+  <h5 class="fw-bold mb-3"><i class="bi bi-grid me-2 text-primary"></i>Equipment Design Modules</h5>
+  <div class="row g-3 mb-4">
+    {% for eq in equipment_cards %}
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+      <a href="{{ url_for('equipment.design_form', eq_type=eq.id) }}"
+         class="equipment-card glass-card d-block text-decoration-none h-100">
+        <div class="eq-card-icon text-{{ eq.color }}">
+          <i class="bi {{ eq.icon }}"></i>
+        </div>
+        <h6 class="eq-card-title fw-bold mt-3 mb-1">{{ eq.name }}</h6>
+        <p class="eq-card-desc text-muted small mb-0">{{ eq.desc }}</p>
+        <div class="eq-card-count mt-2">
+          <span class="badge bg-{{ eq.color }}-subtle text-{{ eq.color }}">
+            {{ type_counts.get(eq.id, 0) }} designs
+          </span>
+        </div>
+        <div class="eq-card-arrow"><i class="bi bi-arrow-right"></i></div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Charts Row ────────────────────────────────────────── -->
+  <div class="row g-4 mb-4">
+    <!-- Equipment Distribution Pie -->
+    <div class="col-lg-4">
+      <div class="glass-card h-100 p-3">
+        <h6 class="fw-bold mb-3"><i class="bi bi-pie-chart me-2 text-info"></i>Equipment Distribution</h6>
+        {% if type_counts %}
+        <canvas id="typeChart" height="220"></canvas>
+        {% else %}
+        <div class="empty-chart">
+          <i class="bi bi-pie-chart display-4 text-muted"></i>
+          <p class="text-muted mt-2">No designs yet. Start by creating one!</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Monthly Activity Bar Chart -->
+    <div class="col-lg-8">
+      <div class="glass-card h-100 p-3">
+        <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart me-2 text-primary"></i>Design Activity (6 months)</h6>
+        {% if monthly_activity %}
+        <canvas id="activityChart" height="220"></canvas>
+        {% else %}
+        <div class="empty-chart">
+          <i class="bi bi-bar-chart display-4 text-muted"></i>
+          <p class="text-muted mt-2">Start designing to see activity trends.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Recent Designs + Projects ─────────────────────────── -->
+  <div class="row g-4">
+    <!-- Recent Designs -->
+    <div class="col-lg-8">
+      <div class="glass-card p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-warning"></i>Recent Designs</h6>
+          <a href="{{ url_for('dashboard.history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        {% if recent_designs %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Equipment</th>
+                <th>Name</th>
+                <th>Cost</th>
+                <th>Efficiency</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in recent_designs %}
+              <tr class="design-row">
+                <td>
+                  <span class="equipment-badge equipment-{{ d.equipment_type }}">
+                    {{ d.equipment_type.replace('_',' ').title() }}
+                  </span>
+                </td>
+                <td class="fw-medium">{{ d.design_name or '—' }}</td>
+                <td>
+                  {% if d.estimated_cost %}
+                  <span class="text-success">${{ "{:,.0f}".format(d.estimated_cost) }}</span>
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  {% if d.efficiency_score %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px">
+                      <div class="progress-bar bg-success" style="width:{{ d.efficiency_score }}%"></div>
+                    </div>
+                    <small>{{ d.efficiency_score|round2 }}%</small>
+                  </div>
+                  {% else %}—{% endif %}
+                </td>
+                <td><small class="text-muted">{{ d.created_at|datetime_format('%d %b %y') }}</small></td>
+                <td>
+                  <a href="{{ url_for('equipment.result_detail', design_id=d.id) }}"
+                     class="btn btn-sm btn-outline-info">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-inbox display-4 text-muted"></i>
+          <p class="text-muted mt-2">No designs yet.</p>
+          <a href="{{ url_for('equipment.design_form', eq_type='heat_exchanger') }}"
+             class="btn btn-primary">Start Designing</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Recent Projects -->
+    <div class="col-lg-4">
+      <div class="glass-card p-3 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold mb-0"><i class="bi bi-folder me-2 text-success"></i>Recent Projects</h6>
+          <a href="{{ url_for('profile.projects') }}" class="btn btn-sm btn-outline-success">All</a>
+        </div>
+        {% for p in recent_projects %}
+        <div class="project-item mb-3 p-3 rounded">
+          <div class="d-flex justify-content-between">
+            <h6 class="fw-bold mb-1 small">{{ p.name }}</h6>
+            <span class="badge bg-{{ 'success' if p.status == 'active' else 'secondary' }}">{{ p.status }}</span>
+          </div>
+          <p class="text-muted small mb-1">{{ p.description[:60] + '...' if p.description and p.description|length > 60 else p.description or '—' }}</p>
+          <small class="text-muted"><i class="bi bi-gear me-1"></i>{{ p.designs.count() }} designs</small>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+          <i class="bi bi-folder-plus display-4 text-muted"></i>
+          <p class="text-muted mt-2 small">No projects yet.</p>
+          <a href="{{ url_for('profile.projects') }}" class="btn btn-sm btn-outline-success">Create Project</a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Counter Animation ─────────────────────────────────────────
+document.querySelectorAll('.counter').forEach(el => {
+  const target = parseInt(el.dataset.target);
+  let current = 0;
+  const step = Math.ceil(target / 50);
+  const timer = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = current;
+    if (current >= target) clearInterval(timer);
+  }, 30);
+});
+
+// ── Equipment Distribution Chart ─────────────────────────────
+{% if type_counts %}
+const typeCtx = document.getElementById('typeChart').getContext('2d');
+new Chart(typeCtx, {
+  type: 'doughnut',
+  data: {
+    labels: {{ type_counts.keys()|list|tojson }},
+    datasets: [{
+      data: {{ type_counts.values()|list|tojson }},
+      backgroundColor: ['#0d6efd','#ffc107','#0dcaf0','#198754','#6f42c1','#dc3545','#fd7e14'],
+      borderColor: 'transparent',
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#adb5bd', boxWidth: 12, padding: 10 }},
+    },
+    cutout: '65%',
+  }
+});
+{% endif %}
+
+// ── Activity Bar Chart ────────────────────────────────────────
+{% if monthly_activity %}
+const actCtx = document.getElementById('activityChart').getContext('2d');
+new Chart(actCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ monthly_activity.keys()|list|tojson }},
+    datasets: [{
+      label: 'Designs',
+      data: {{ monthly_activity.values()|list|tojson }},
+      backgroundColor: 'rgba(13,110,253,0.6)',
+      borderColor: '#0d6efd',
+      borderWidth: 2,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false }},
+    scales: {
+      x: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      y: { ticks: { color: '#adb5bd', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }},
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

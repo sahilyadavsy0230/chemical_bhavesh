@@ -1,0 +1,61 @@
+# ============================================================
+# AI-Based Web Platform for Automated Design of Chemical Process Equipment
+# Requirements File
+# ============================================================
+
+# Core Flask Framework
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-Login
+Flask-WTF
+Flask-CORS
+Flask-Limiter
+
+# Database
+PyMySQL
+cryptography
+
+# JWT Authentication
+PyJWT
+
+# AI Integration - Groq API
+groq
+
+# PDF Generation
+reportlab
+Pillow
+
+# Data Processing
+
+pandas
+
+# Environment Variables
+python-dotenv
+
+# Password Hashing
+bcrypt
+Werkzeug
+
+# Forms and Validation
+WTForms
+email-validator
+
+# Security
+bleach
+MarkupSafe
+
+# HTTP Requests (for Groq fallback)
+requests
+
+# Unit Conversion
+pint
+
+# Utilities
+python-dateutil
+pytz
+
+# Charting data backend
+matplotlib
+# Production Server
+gunicorn

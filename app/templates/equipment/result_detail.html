@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% block title %}{{ design.equipment_type.replace('_',' ').title() }} Result #{{ design.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-primary">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard.history') }}" class="text-primary">History</a></li>
+      <li class="breadcrumb-item active">{{ design.design_name or 'Design #'+design.id|string }}</li>
+    </ol>
+  </nav>
+
+  <!-- Header Card -->
+  <div class="glass-card p-4 mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <div class="d-flex align-items-center gap-3">
+          <div class="eq-header-icon large">
+            <i class="bi {{ meta.get('icon','bi-gear') }}"></i>
+          </div>
+          <div>
+            <h1 class="h4 fw-bold mb-1">{{ design.design_name or meta.get('name','Design') }}</h1>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <span class="badge bg-primary">{{ design.equipment_type.replace('_',' ').title() }}</span>
+              <span class="badge bg-{{ 'success' if design.status == 'completed' else 'danger' }}">
+                {{ design.status.title() }}
+              </span>
+              <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ design.created_at|datetime_format }}</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <div class="d-flex gap-2 justify-content-md-end flex-wrap">
+          <a href="{{ url_for('reports.generate', design_id=design.id) }}"
+             class="btn btn-danger">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF Report
+          </a>
+          <button class="btn btn-info" id="aiSafety" data-id="{{ design.id }}">
+            <i class="bi bi-shield-check me-1"></i>Safety AI
+          </button>
+          <button class="btn btn-warning" id="aiOptBtn" data-id="{{ design.id }}">
+            <i class="bi bi-robot me-1"></i>Optimize
+          </button>
+          <a href="{{ url_for('equipment.design_form', eq_type=design.equipment_type) }}"
+             class="btn btn-outline-primary">
+            <i class="bi bi-arrow-repeat me-1"></i>Redesign
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ── Left: Key Results & Inputs ───────────────────────── -->
+    <div class="col-xl-4">
+
+      <!-- Key Metrics -->
+      <div class="glass-card p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-speedometer2 me-2 text-primary"></i>Key Metrics</h5>
+        <div class="row g-3">
+          {% if results.get('heat_duty_kW') %}
+          <div class="col-6">
+            <div class="metric-tile bg-danger-subtle border border-danger-subtle rounded p-3 text-center">
+              <div class="h5 fw-bold text-danger mb-0">{{ results.heat_duty_kW }}</div>
+              <small class="text-muted">kW Heat Duty</small>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('effectiveness_pct') %}
+          <div class="col-6">
+            <div class="metric-tile bg-success-subtle border border-success-subtle rounded p-3 text-center">
+              <div class="h5 fw-bold text-success mb-0">{{ results.effectiveness_pct }}%</div>
+              <small class="text-muted">Effectiveness</small>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('number_of_tubes') %}
+          <div class="col-6">
+            <div class="metric-tile bg-info-subtle border border-info-subtle rounded p-3 text-center">
+              <div class="h5 fw-bold text-info mb-0">{{ results.number_of_tubes }}</div>
+              <small class="text-muted">Tubes</small>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('shell_diameter_m') %}
+          <div class="col-6">
+            <div class="metric-tile bg-warning-subtle border border-warning-subtle rounded p-3 text-center">
+              <div class="h5 fw-bold text-warning mb-0">{{ results.shell_diameter_m }}</div>
+              <small class="text-muted">m Shell Dia</small>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('volume_m3') %}
+          <div class="col-6">
+            <div class="metric-tile bg-primary-subtle border border-primary-subtle rounded p-3 text-center">
+              <div class="h5 fw-bold text-primary mb-0">{{ results.volume_m3 }}</div>
+              <small class="text-muted">m³ Volume</small>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('TDH_m') %}
+          <div class="col-6">
+            <div class="metric-tile bg-primary-subtle border border-primary-subtle rounded p-3 text-center">
+              <div class="h5 fw-bold text-primary mb-0">{{ results.TDH_m }}</div>
+              <small class="text-muted">m TDH</small>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('motor_power_kW') %}
+          <div class="col-6">
+            <div class="metric-tile bg-warning-subtle border border-warning-subtle rounded p-3 text-center">
+              <div class="h5 fw-bold text-warning mb-0">{{ results.motor_power_kW }}</div>
+              <small class="text-muted">kW Motor</small>
+            </div>
+          </div>
+          {% endif %}
+          {% if results.get('purchased_cost_USD') %}
+          <div class="col-12">
+            <div class="metric-tile bg-success-subtle border border-success-subtle rounded p-3 d-flex justify-content-between align-items-center">
+              <div>
+                <div class="h5 fw-bold text-success mb-0">${{ "{:,.0f}".format(results.purchased_cost_USD) }}</div>
+                <small class="text-muted">Purchased Cost</small>
+              </div>
+              <div class="text-end">
+                <div class="fw-bold text-muted">${{ "{:,.0f}".format(results.get('installed_cost_USD',0)) }}</div>
+                <small class="text-muted">Installed</small>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Inputs Summary -->
+      <div class="glass-card p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-input-cursor me-2 text-warning"></i>Design Inputs</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            {% for k, v in inputs.items() %}
+            <tr>
+              <td class="text-muted small">{{ k.replace('_',' ').title() }}</td>
+              <td class="fw-medium text-end small">{{ v }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Steps, Charts, AI ──────────────────────────── -->
+    <div class="col-xl-8">
+
+      <!-- Calculation Steps -->
+      <div class="glass-card p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-list-ol me-2 text-warning"></i>Calculation Steps</h5>
+        <div class="accordion" id="stepsAcc">
+          {% for step in results.get('calculation_steps', []) %}
+          <div class="accordion-item step-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button {% if not loop.first %}collapsed{% endif %} step-btn"
+                      type="button" data-bs-toggle="collapse"
+                      data-bs-target="#rs{{ step.step }}">
+                <span class="step-badge">{{ step.step }}</span>{{ step.title }}
+              </button>
+            </h2>
+            <div id="rs{{ step.step }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}">
+              <div class="accordion-body">
+                {% if step.get('formula') %}
+                <div class="formula-pill mb-2"><i class="bi bi-function me-1"></i>{{ step.formula }}</div>
+                {% endif %}
+                {% if step.get('calc') %}
+                <p class="small text-muted">{{ step.calc }}</p>
+                {% endif %}
+                <div class="result-pill">
+                  <i class="bi bi-check-circle text-success me-1"></i>{{ step.result }}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-6">
+          <div class="glass-card p-3">
+            <h6 class="fw-bold mb-2"><i class="bi bi-graph-up me-1 text-success"></i>Performance</h6>
+            <canvas id="perfChart" height="200"></canvas>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="glass-card p-3">
+            <h6 class="fw-bold mb-2"><i class="bi bi-currency-dollar me-1 text-warning"></i>Cost Breakdown</h6>
+            <canvas id="costChart" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Safety Box -->
+      {% if results.get('safety_notes') %}
+      <div class="safety-box glass-card p-4 mb-4">
+        <h5 class="fw-bold text-warning mb-3">
+          <i class="bi bi-shield-exclamation me-2"></i>Safety Recommendations
+        </h5>
+        {% for note in results.safety_notes %}
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <i class="bi bi-exclamation-triangle-fill text-warning mt-1 flex-shrink-0"></i>
+          <span class="small">{{ note }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- AI Explanation -->
+      <div class="glass-card p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-robot me-2 text-info"></i>AI Explanation</h5>
+        <div id="aiExplanation" style="white-space:pre-wrap; line-height:1.7" class="small">
+          {{ ai_explanation or 'AI explanation unavailable. Check your GROQ_API_KEY.' }}
+        </div>
+      </div>
+
+      <!-- AI Output Panels -->
+      <div id="aiOptOutput" class="glass-card p-4 mb-4 d-none">
+        <h5 class="fw-bold mb-3"><i class="bi bi-lightbulb me-2 text-warning"></i>AI Optimization</h5>
+        <div id="aiOptContent" style="white-space:pre-wrap" class="small"></div>
+      </div>
+      <div id="aiSafetyOutput" class="glass-card p-4 d-none">
+        <h5 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-success"></i>AI Safety Analysis</h5>
+        <div id="aiSafetyContent" style="white-space:pre-wrap" class="small"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Performance Gauge ────────────────────────────────────────
+new Chart(document.getElementById('perfChart').getContext('2d'), {
+  type: 'radar',
+  data: {
+    labels: ['Efficiency','Cost Opt','Safety','Thermal','Hydraulic'],
+    datasets: [{
+      label: 'Design Score',
+      data: [
+        {{ results.get('effectiveness_pct', results.get('removal_efficiency_pct', 70)) or 70 }},
+        {{ [100 - (results.get('purchased_cost_USD',50000)/1000), 100]|min }},
+        80,
+        {{ results.get('effectiveness_pct', 75) or 75 }},
+        {{ [100 - (results.get('dP_tube_Pa',0)/700), 100]|min if results.get('dP_tube_Pa') else 85 }},
+      ],
+      fill: true,
+      backgroundColor: 'rgba(13,202,240,0.2)',
+      borderColor: '#0dcaf0',
+      pointBackgroundColor: '#0dcaf0',
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      r: {
+        beginAtZero: true, max: 100,
+        ticks: { color: '#6c757d', stepSize: 20 },
+        grid:  { color: 'rgba(255,255,255,0.1)' },
+        pointLabels: { color: '#adb5bd', font: { size: 10 } },
+      }
+    },
+    plugins: { legend: { display: false }}
+  }
+});
+
+// ── Cost Doughnut ─────────────────────────────────────────────
+new Chart(document.getElementById('costChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Equipment','Installation','Contingency'],
+    datasets: [{
+      data: [
+        {{ results.get('purchased_cost_USD', 10000) or 10000 }},
+        {{ (results.get('installed_cost_USD', 35000) or 35000) - (results.get('purchased_cost_USD',10000) or 10000) }},
+        {{ ((results.get('purchased_cost_USD', 10000) or 10000) * 0.15)|int }},
+      ],
+      backgroundColor: ['#0d6efd','#198754','#ffc107'],
+      borderColor: 'transparent',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position:'bottom', labels:{ color:'#adb5bd', boxWidth:12 }},
+    },
+    cutout: '60%',
+  }
+});
+
+// ── AI Optimize ───────────────────────────────────────────────
+document.getElementById('aiOptBtn').addEventListener('click', async function() {
+  this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+  try {
+    const r = await fetch(`/api/v1/optimize/{{ design.id }}`, {
+      method:'POST', headers:{'X-CSRFToken': '{{ csrf_token() }}'}
+    });
+    const d = await r.json();
+    document.getElementById('aiOptOutput').classList.remove('d-none');
+    document.getElementById('aiOptContent').textContent = d.optimization;
+  } catch(e) {}
+  this.innerHTML = '<i class="bi bi-robot me-1"></i>Optimize';
+});
+
+// ── AI Safety ────────────────────────────────────────────────
+document.getElementById('aiSafety').addEventListener('click', async function() {
+  this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+  try {
+    const r = await fetch(`/api/v1/safety/{{ design.id }}`, {
+      method:'POST', headers:{'X-CSRFToken': '{{ csrf_token() }}'}
+    });
+    const d = await r.json();
+    document.getElementById('aiSafetyOutput').classList.remove('d-none');
+    document.getElementById('aiSafetyContent').textContent = d.safety_analysis;
+  } catch(e) {}
+  this.innerHTML = '<i class="bi bi-shield-check me-1"></i>Safety AI';
+});
+</script>
+{% endblock %}

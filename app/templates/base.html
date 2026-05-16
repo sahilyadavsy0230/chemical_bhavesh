@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="ChemDesignAI — AI-powered chemical process equipment design platform"/>
+  <meta name="csrf-token" content="{{ csrf_token() }}"/>
+  <title>{% block title %}ChemDesignAI{% endblock %} | {{ app_name }}</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <!-- Custom CSS -->
+  <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet"/>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+<!-- ── Animated Loading Screen ────────────────────────────── -->
+<div id="loader" class="loader-overlay">
+  <div class="loader-content">
+    <div class="loader-icon">
+      <div class="loader-ring"></div>
+      <i class="bi bi-atom loader-atom"></i>
+    </div>
+    <p class="loader-text">ChemDesignAI</p>
+    <small class="loader-sub">Loading Engineering Intelligence...</small>
+  </div>
+</div>
+
+<!-- ── Navigation ─────────────────────────────────────────── -->
+{% if current_user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-dark glass-nav fixed-top">
+  <div class="container-fluid px-4">
+
+    <!-- Brand -->
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('dashboard.index') }}">
+      <div class="brand-icon">
+        <i class="bi bi-atom"></i>
+      </div>
+      <span class="brand-text">Chem<span class="brand-accent">DesignAI</span></span>
+    </a>
+
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      <!-- Main Links -->
+      <ul class="navbar-nav me-auto gap-1 ms-3">
+        <li class="nav-item">
+          <a class="nav-link nav-pill {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
+             href="{{ url_for('dashboard.index') }}">
+            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+          </a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link nav-pill dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-gear me-1"></i>Equipment
+          </a>
+          <ul class="dropdown-menu glass-dropdown">
+            <li><a class="dropdown-item" href="{{ url_for('equipment.design_form', eq_type='heat_exchanger') }}">
+              <i class="bi bi-thermometer-half text-danger me-2"></i>Heat Exchanger</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('equipment.design_form', eq_type='reactor') }}">
+              <i class="bi bi-atom text-warning me-2"></i>Reactor</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('equipment.design_form', eq_type='distillation') }}">
+              <i class="bi bi-bar-chart-steps text-info me-2"></i>Distillation Column</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('equipment.design_form', eq_type='evaporator') }}">
+              <i class="bi bi-cloud-haze text-primary me-2"></i>Evaporator</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('equipment.design_form', eq_type='absorber') }}">
+              <i class="bi bi-funnel text-success me-2"></i>Absorber</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('equipment.design_form', eq_type='pump') }}">
+              <i class="bi bi-droplet-half text-secondary me-2"></i>Pump</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('equipment.design_form', eq_type='compressor') }}">
+              <i class="bi bi-wind me-2"></i>Compressor</a></li>
+          </ul>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill {% if request.endpoint == 'dashboard.history' %}active{% endif %}"
+             href="{{ url_for('dashboard.history') }}">
+            <i class="bi bi-clock-history me-1"></i>History
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill" href="#" id="chatToggle">
+            <i class="bi bi-robot me-1"></i>AI Chat
+            <span class="badge bg-primary rounded-pill ms-1">AI</span>
+          </a>
+        </li>
+        {% if current_user.is_admin %}
+        <li class="nav-item">
+          <a class="nav-link nav-pill {% if request.endpoint and 'admin' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('admin.index') }}">
+            <i class="bi bi-shield-check me-1"></i>Admin
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+
+      <!-- Right Side -->
+      <div class="d-flex align-items-center gap-3">
+        <!-- Theme Toggle -->
+        <button class="btn btn-sm btn-outline-secondary rounded-circle" id="themeToggle"
+                title="Toggle dark/light mode">
+          <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+        </button>
+
+        <!-- User Dropdown -->
+        <div class="dropdown">
+          <button class="btn d-flex align-items-center gap-2 user-btn" data-bs-toggle="dropdown">
+            <div class="user-avatar-sm">
+              {{ (current_user.full_name or current_user.username)[0].upper() }}
+            </div>
+            <span class="d-none d-md-inline text-light">{{ current_user.full_name or current_user.username }}</span>
+            <i class="bi bi-chevron-down small text-muted"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end glass-dropdown">
+            <li class="px-3 py-2 border-bottom border-secondary">
+              <small class="text-muted d-block">Signed in as</small>
+              <strong class="text-light">{{ current_user.username }}</strong>
+              <span class="badge bg-primary ms-1">{{ current_user.role }}</span>
+            </li>
+            <li><a class="dropdown-item" href="{{ url_for('profile.index') }}">
+              <i class="bi bi-person me-2"></i>Profile</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('profile.projects') }}">
+              <i class="bi bi-folder me-2"></i>My Projects</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">
+              <i class="bi bi-key me-2"></i>Change Password</a></li>
+            <li><hr class="dropdown-divider border-secondary"></li>
+            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+              <i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<!-- ── Flash Messages ──────────────────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container position-fixed top-0 end-0 p-3" style="z-index:9999; margin-top:70px;">
+  {% for category, message in messages %}
+  <div class="toast show align-items-center text-bg-{{ 'danger' if category == 'error' else category }} border-0 mb-2"
+       role="alert" data-bs-autohide="true" data-bs-delay="5000">
+    <div class="d-flex">
+      <div class="toast-body"><i class="bi bi-info-circle me-2"></i>{{ message }}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- ── Main Content ────────────────────────────────────────── -->
+<main class="{% if current_user.is_authenticated %}main-content{% endif %}">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ── AI Chat Sidebar ─────────────────────────────────────── -->
+{% if current_user.is_authenticated %}
+<div class="chat-sidebar" id="chatSidebar">
+  <div class="chat-header">
+    <div class="d-flex align-items-center gap-2">
+      <div class="ai-avatar"><i class="bi bi-robot"></i></div>
+      <div>
+        <div class="fw-bold">ChemDesignAI Assistant</div>
+        <small class="text-success">● Powered by Llama 3</small>
+      </div>
+    </div>
+    <button class="btn btn-sm btn-close btn-close-white" id="chatClose"></button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-message ai">
+      <div class="message-bubble">
+        👋 Hello! I'm your AI chemical engineering assistant.<br><br>
+        I can help you with:<br>
+        • Explaining calculations & formulas<br>
+        • Optimization suggestions<br>
+        • Equipment troubleshooting<br>
+        • Safety recommendations<br><br>
+        What would you like to know?
+      </div>
+      <small class="text-muted">ChemDesignAI</small>
+    </div>
+  </div>
+  <div class="chat-input-area">
+    <div class="d-flex gap-2">
+      <input type="text" class="form-control chat-input" id="chatInput"
+             placeholder="Ask about any chemical engineering topic..."/>
+      <button class="btn btn-primary btn-send" id="chatSend">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+    <small class="text-muted mt-1 d-block">AI may make mistakes — verify critical values</small>
+  </div>
+</div>
+<div class="chat-overlay" id="chatOverlay"></div>
+{% endif %}
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

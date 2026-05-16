@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="container-fluid py-4 px-4">
+  <h2 class="h4 fw-bold mb-4"><i class="bi bi-shield-check me-2 text-primary"></i>Admin Dashboard</h2>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    {% set stat_items = [
+      ('Users',    stats.total_users,   'bi-people-fill',  'primary'),
+      ('Active',   stats.active_users,  'bi-person-check', 'success'),
+      ('Designs',  stats.total_designs, 'bi-gear',         'warning'),
+      ('Projects', stats.total_projects,'bi-folder',       'info'),
+      ('AI Chats', stats.total_chats,   'bi-robot',        'secondary'),
+    ] %}
+    {% for label, val, icon, color in stat_items %}
+    <div class="col-6 col-xl">
+      <div class="glass-card p-3 text-center">
+        <i class="bi {{ icon }} fs-2 text-{{ color }}"></i>
+        <div class="h4 fw-bold mt-2 mb-0">{{ val }}</div>
+        <small class="text-muted">{{ label }}</small>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="row g-4">
+    <!-- Equipment Chart -->
+    <div class="col-lg-5">
+      <div class="glass-card p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-pie-chart me-2 text-info"></i>Designs by Type</h6>
+        {% if type_dist %}
+        <canvas id="adminTypeChart" height="260"></canvas>
+        {% else %}
+        <p class="text-muted text-center py-4">No design data yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Recent Users -->
+    <div class="col-lg-7">
+      <div class="glass-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-success"></i>Recent Users</h6>
+          <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-success">All Users</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in recent_users %}
+              <tr>
+                <td class="fw-medium">{{ u.username }}</td>
+                <td><small class="text-muted">{{ u.email }}</small></td>
+                <td><span class="badge bg-{{ 'danger' if u.role=='admin' else 'primary' }}">{{ u.role }}</span></td>
+                <td><span class="badge bg-{{ 'success' if u.is_active else 'secondary' }}">
+                  {{ 'Active' if u.is_active else 'Disabled' }}</span></td>
+                <td><small class="text-muted">{{ u.created_at|datetime_format('%d %b %Y') }}</small></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if type_dist %}
+new Chart(document.getElementById('adminTypeChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: {{ type_dist.keys()|list|tojson }},
+    datasets:[{
+      label:'Designs',
+      data: {{ type_dist.values()|list|tojson }},
+      backgroundColor:['#0d6efd','#ffc107','#0dcaf0','#198754','#6f42c1','#dc3545','#fd7e14'],
+      borderRadius:8,
+    }]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:'#adb5bd'},grid:{color:'rgba(255,255,255,0.05)'}},
+      y:{ticks:{color:'#adb5bd',stepSize:1},grid:{color:'rgba(255,255,255,0.05)'}},
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}
